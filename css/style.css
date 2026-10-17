@@ -1,0 +1,24 @@
+*{box-sizing:border-box}
+body{margin:0;font:16px system-ui,sans-serif;background:#16141f;color:#f2eee6}
+header{text-align:center;padding:14px 10px 4px}
+h1{margin:0;font-size:2rem;color:#ffb04a;letter-spacing:1px}
+header p{margin:2px 0 0;opacity:.7}
+main{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;padding:12px;max-width:1000px;margin:auto}
+.stage{flex:1 1 340px;max-width:520px}
+canvas{width:100%;aspect-ratio:1;background:repeating-conic-gradient(#2a2838 0 25%,#222030 0 50%) 0 0/24px 24px;border-radius:12px;touch-action:none;display:block}
+.panel{flex:1 1 300px;max-width:440px}
+h2{font-size:.85rem;text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px;color:#ffb04a}
+h2 small{text-transform:none;opacity:.6;letter-spacing:0}
+.row{display:flex;gap:10px;margin-top:10px}
+button,.btn{font:inherit;background:#2c2940;color:#f2eee6;border:1px solid #4a4666;border-radius:8px;padding:8px 12px;cursor:pointer}
+button.on{background:#ffb04a;color:#222;border-color:#ffb04a}
+button.pri{flex:1;padding:12px;background:#ffb04a;color:#222;font-weight:700;border:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.swatches{display:flex;flex-wrap:wrap;gap:8px}
+.sw{width:36px;height:36px;border-radius:50%;border:2px solid #4a4666;cursor:pointer;padding:0}
+.sw.on{border-color:#fff;box-shadow:0 0 0 2px #ffb04a}
+input[type=range]{width:100%}
+.sel{margin-top:10px;padding:10px;background:#221f33;border-radius:8px;display:grid;gap:6px}
+.sel label{display:grid;grid-template-columns:60px 1fr;align-items:center}
+.hidden{display:none}
+.foot{opacity:.5;font-size:.8rem;text-align:center;margin-top:20px}
