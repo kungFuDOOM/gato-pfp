@@ -51,3 +51,8 @@ details .body{padding:0 12px 12px}
   .panel{max-width:none}
   .accgrid{max-height:34vh}
 }
+
+/* added accessories */
+button.acc{position:relative}
+button.acc.added{outline:2px solid #7bd88f;outline-offset:-2px;background:#26402f}
+button.acc.added::after{content:"\2713 Added";position:absolute;top:2px;right:2px;background:#7bd88f;color:#10321b;font-size:.62rem;font-weight:700;line-height:1;padding:3px 5px;border-radius:8px}

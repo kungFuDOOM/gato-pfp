@@ -235,6 +235,7 @@ function sync() {
   document.querySelectorAll('#frames button').forEach(b => b.classList.toggle('on', b.dataset.v === st.frame));
   $('pface').classList.toggle('on', st.photoMode === 'face'); $('pbg').classList.toggle('on', st.photoMode === 'bg');
   $('zoom').value = st.zoom;
+  document.querySelectorAll('#acc button.acc').forEach(b => { const on = st.items.some(i => i.type === b.dataset.type); b.classList.toggle('added', on); b.setAttribute('aria-pressed', on); });
   const it = st.items[st.sel]; $('sel').classList.toggle('hidden', !it);
   if (it) { $('selname').textContent = NAMES[it.type]; $('selsize').value = it.s; $('selrot').value = it.r; }
 }
@@ -251,9 +252,10 @@ function buildAcc() {
     b.appendChild(t); const l = document.createElement('span'); l.textContent = NAMES[a]; b.appendChild(l);
     b.onclick = () => addAcc(a); box.appendChild(b);
   });
+  sync();
 }
-buildAcc();
-function addAcc(type) { const d = DEF[type]; st.items.push({ type, x: d.x, y: d.y, s: d.s, r: 0 }); st.sel = st.items.length - 1; sync(); draw(); }
+buildAcc(); 
+function addAcc(type) { const ex = st.items.findIndex(i => i.type === type); if (ex >= 0) { st.sel = ex; sync(); draw(); return; } const d = DEF[type]; st.items.push({ type, x: d.x, y: d.y, s: d.s, r: 0 }); st.sel = st.items.length - 1; sync(); draw(); }
 
 $('zoom').oninput = e => { st.zoom = +e.target.value; draw(); };
 $('selsize').oninput = e => { const it = st.items[st.sel]; if (it) { it.s = +e.target.value; draw(); } };
@@ -297,7 +299,7 @@ $('rand').onclick = () => {
   st.bg = Math.floor(Math.random() * BGS.length); st.pat = pick(PATS); st.frame = pick(FRAMES); st.zoom = +(1 + Math.random() * 0.6).toFixed(2);
   st.items = []; 
   // at most one headwear, one face piece, one neck piece
-  const add = t => st.items.push({ type: t, ...DEF[t], r: Math.round((Math.random() - .5) * 12) });
+  const add = t => !st.items.some(i => i.type === t) && st.items.push({ type: t, ...DEF[t], r: Math.round((Math.random() - .5) * 12) });
   const head = pick([...HEAD, null]); if (head) add(head);
   const face = pick([...FACE, null]); if (face) add(face);
   if (Math.random() < .5) add(pick(NECK));
