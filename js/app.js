@@ -13,8 +13,10 @@ const BGS = [
 ];
 const PATS = ['none', 'dots', 'stripes', 'checks', 'rays', 'stars'];
 const FRAMES = ['circle', 'rounded', 'square'];
-const ACCS = ['hat', 'sunglasses', 'bowtie', 'crown'];
-const NAMES = { hat: 'Top hat', sunglasses: 'Sunglasses', bowtie: 'Bow tie', crown: 'Crown' };
+const ACCS = ['hat', 'crown', 'party', 'santa', 'wizard', 'halo', 'flowers', 'headphones', 'bandana', 'sunglasses', 'monocle', 'eyepatch', 'laser', 'mustache', 'bowtie', 'scarf'];
+const NAMES = { hat: 'Top hat', sunglasses: 'Sunglasses', bowtie: 'Bow tie', crown: 'Crown', party: 'Party hat', santa: 'Santa hat', wizard: 'Wizard hat', halo: 'Halo', flowers: 'Flower crown', headphones: 'Headphones', bandana: 'Bandana', monocle: 'Monocle', eyepatch: 'Eyepatch', laser: 'Laser eyes', mustache: 'Mustache', scarf: 'Scarf' };
+const CATS = { Head: ['hat', 'crown', 'party', 'santa', 'wizard', 'halo', 'flowers', 'headphones', 'bandana'], Face: ['sunglasses', 'monocle', 'eyepatch', 'laser', 'mustache'], Neck: ['bowtie', 'scarf'] };
+const HEAD = CATS.Head, FACE = CATS.Face, NECK = CATS.Neck;
 
 const st = { bg: 0, pat: 'dots', frame: 'circle', zoom: 1.25, items: [], sel: -1, photo: null, photoMode: 'face', pface: { x: CAT.faceX, y: CAT.faceY, s: 1 } };
 
@@ -25,6 +27,10 @@ catImg.onload = () => { defaults(); draw(); window.__ready = true; };
 const DEF = {
   hat: { x: 450, y: 92, s: 1.0 }, sunglasses: { x: 446, y: 225, s: 1.0 },
   bowtie: { x: 452, y: 400, s: 0.8 }, crown: { x: 450, y: 70, s: 1.0 },
+  party: { x: 452, y: 50, s: 0.95 }, santa: { x: 448, y: 100, s: 1.4 }, wizard: { x: 452, y: 30, s: 1.25 },
+  halo: { x: 450, y: 38, s: 1.0 }, flowers: { x: 450, y: 78, s: 1.7 }, headphones: { x: 450, y: 125, s: 1.72 },
+  bandana: { x: 450, y: 125, s: 1.8 }, monocle: { x: 515, y: 228, s: 0.78 }, eyepatch: { x: 515, y: 226, s: 0.8 },
+  laser: { x: 449, y: 225, s: 1.12 }, mustache: { x: 442, y: 318, s: 0.75 }, scarf: { x: 452, y: 425, s: 1.6 },
 };
 function defaults() { if (!st.items.length) { addAcc('hat'); } }
 
@@ -100,6 +106,89 @@ const DRAW = {
     c.fillStyle = '#3aa0ff'; for (const x of [-48, 48]) { c.beginPath(); c.arc(x, 24, 8, 0, 7); c.fill(); }
     for (const [x, y] of [[-95, -50], [0, -65], [95, -50]]) { c.fillStyle = '#fff3b0'; c.beginPath(); c.arc(x, y, 9, 0, 7); c.fill(); c.stroke(); }
   },
+
+  party(c) {
+    c.fillStyle = '#ff5fa2'; c.strokeStyle = '#b8336f'; c.lineWidth = 5; c.lineJoin = 'round';
+    c.beginPath(); c.moveTo(0, -85); c.lineTo(52, 50); c.lineTo(-52, 50); c.closePath(); c.fill(); c.stroke();
+    c.save(); c.clip(); c.strokeStyle = '#ffe27a'; c.lineWidth = 12;
+    for (let i = -3; i < 4; i++) { c.beginPath(); c.moveTo(-70, i * 28 + 30); c.lineTo(70, i * 28 - 20); c.stroke(); } c.restore();
+    c.fillStyle = '#6ab7ff'; c.beginPath(); c.arc(0, -88, 15, 0, 7); c.fill();
+    c.fillStyle = '#6ab7ff'; c.beginPath(); c.roundRect(-55, 42, 110, 14, 7); c.fill();
+  },
+  santa(c) {
+    c.fillStyle = '#d62839'; c.strokeStyle = '#8f1522'; c.lineWidth = 5; c.lineJoin = 'round';
+    c.beginPath(); c.moveTo(-80, 40); c.quadraticCurveTo(-70, -70, 20, -75); c.quadraticCurveTo(70, -70, 85, -10); c.lineTo(95, 40); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#fff'; c.strokeStyle = '#d9d9d9';
+    c.beginPath(); c.roundRect(-92, 22, 200, 38, 19); c.fill(); c.stroke();
+    c.beginPath(); c.arc(92, -4, 18, 0, 7); c.fill(); c.stroke();
+  },
+  wizard(c) {
+    c.fillStyle = '#4b3a9c'; c.strokeStyle = '#2a1f66'; c.lineWidth = 5; c.lineJoin = 'round';
+    c.beginPath(); c.ellipse(0, 55, 100, 17, 0, 0, 7); c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(-58, 50); c.quadraticCurveTo(-30, -20, 10, -95); c.quadraticCurveTo(30, -40, 58, 50); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#ffd23f'; c.fillRect(-52, 22, 104, 14);
+    star(c, -8, -20, 14, 6); star(c, 18, 2, 9, 4);
+  },
+  halo(c) {
+    c.strokeStyle = '#ffd23f'; c.lineWidth = 14; c.shadowColor = '#fff3b0'; c.shadowBlur = 20;
+    c.beginPath(); c.ellipse(0, 0, 80, 22, 0, 0, 7); c.stroke();
+    c.lineWidth = 4; c.strokeStyle = '#fff3b0'; c.beginPath(); c.ellipse(0, -4, 78, 18, 0, Math.PI * 1.1, Math.PI * 1.7); c.stroke();
+  },
+  flowers(c) {
+    c.strokeStyle = '#3f9b4f'; c.lineWidth = 10; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(-98, 25); c.quadraticCurveTo(0, -40, 98, 25); c.stroke();
+    const f = (x, y, col, r) => { c.fillStyle = col; for (let i = 0; i < 5; i++) { const a = i * 1.2566; c.beginPath(); c.arc(x + Math.cos(a) * r, y + Math.sin(a) * r, r * .8, 0, 7); c.fill(); } c.fillStyle = '#ffe27a'; c.beginPath(); c.arc(x, y, r * .7, 0, 7); c.fill(); };
+    f(-80, 12, '#ff7aa8', 13); f(-42, -8, '#ffffff', 12); f(0, -14, '#b48cff', 15); f(42, -8, '#ff9a5a', 12); f(80, 12, '#ff7aa8', 13);
+    c.fillStyle = '#3f9b4f'; for (const x of [-60, -20, 22, 62]) { c.beginPath(); c.ellipse(x, 0, 9, 5, .5, 0, 7); c.fill(); }
+  },
+  headphones(c) {
+    c.strokeStyle = '#2b2b36'; c.lineWidth = 14; c.lineCap = 'round';
+    c.beginPath(); c.arc(0, 20, 88, Math.PI * 1.03, Math.PI * 1.97); c.stroke();
+    for (const s of [-1, 1]) {
+      c.fillStyle = '#2b2b36'; c.beginPath(); c.roundRect(s * 92 - 20, -2, 40, 70, 16); c.fill();
+      c.fillStyle = '#ff5f5f'; c.beginPath(); c.roundRect(s * 92 - 12 + s * 4, 8, 22, 50, 10); c.fill();
+    }
+  },
+  bandana(c) {
+    c.fillStyle = '#e63946'; c.strokeStyle = '#9d1f2b'; c.lineWidth = 5; c.lineJoin = 'round';
+    c.beginPath(); c.moveTo(-100, -20); c.quadraticCurveTo(0, -45, 100, -20); c.lineTo(96, 8); c.quadraticCurveTo(0, 55, -96, 8); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#fff'; for (let i = -3; i <= 3; i++) { c.beginPath(); c.arc(i * 28, 4 + 8 * (1 - Math.abs(i) / 3), 5, 0, 7); c.fill(); }
+    c.fillStyle = '#e63946'; c.beginPath(); c.moveTo(96, 0); c.lineTo(130, -18); c.lineTo(122, 12); c.lineTo(138, 34); c.lineTo(100, 22); c.closePath(); c.fill(); c.stroke();
+  },
+  monocle(c) {
+    c.strokeStyle = '#d4a017'; c.lineWidth = 9; c.fillStyle = 'rgba(180,220,255,.25)';
+    c.beginPath(); c.arc(0, 0, 50, 0, 7); c.fill(); c.stroke();
+    c.lineWidth = 3; c.strokeStyle = '#d4a017'; c.beginPath(); c.moveTo(30, 44); c.quadraticCurveTo(46, 100, 20, 150); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 5; c.beginPath(); c.arc(0, 0, 36, Math.PI * 1.1, Math.PI * 1.5); c.stroke();
+  },
+  eyepatch(c) {
+    c.strokeStyle = '#111'; c.lineWidth = 6; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(-50, -34); c.lineTo(-110, -78); c.moveTo(48, 30); c.lineTo(110, 70); c.stroke();
+    c.fillStyle = '#15151c'; c.beginPath(); c.ellipse(0, 0, 54, 46, -.2, 0, 7); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.2)'; c.lineWidth = 4; c.beginPath(); c.ellipse(0, 0, 44, 36, -.2, Math.PI * 1.1, Math.PI * 1.6); c.stroke();
+  },
+  laser(c) {
+    for (const x of [-66, 66]) {
+      const g = c.createRadialGradient(x, 0, 2, x, 0, 34); g.addColorStop(0, '#fff'); g.addColorStop(.35, '#ff6b6b'); g.addColorStop(1, 'rgba(255,0,0,0)');
+      c.fillStyle = g; c.beginPath(); c.arc(x, 0, 34, 0, 7); c.fill();
+      c.fillStyle = 'rgba(255,40,40,.85)'; c.beginPath(); c.moveTo(x, -9); c.lineTo(x + Math.sign(x) * 400, -26); c.lineTo(x + Math.sign(x) * 400, 26); c.lineTo(x, 9); c.closePath(); c.fill();
+      c.fillStyle = '#fff'; c.beginPath(); c.moveTo(x, -4); c.lineTo(x + Math.sign(x) * 400, -8); c.lineTo(x + Math.sign(x) * 400, 8); c.lineTo(x, 4); c.closePath(); c.fill();
+    }
+  },
+  mustache(c) {
+    c.fillStyle = '#3b2314'; c.strokeStyle = '#1f110a'; c.lineWidth = 4; c.lineJoin = 'round';
+    for (const s of [-1, 1]) {
+      c.beginPath(); c.moveTo(0, -14); c.quadraticCurveTo(s * 40, -40, s * 82, -6); c.quadraticCurveTo(s * 112, 6, s * 100, -30);
+      c.quadraticCurveTo(s * 116, 22, s * 70, 20); c.quadraticCurveTo(s * 30, 22, 0, 12); c.closePath(); c.fill(); c.stroke();
+    }
+  },
+  scarf(c) {
+    c.fillStyle = '#2a9d8f'; c.strokeStyle = '#17665c'; c.lineWidth = 5; c.lineJoin = 'round';
+    c.beginPath(); c.roundRect(-100, -30, 200, 52, 26); c.fill(); c.stroke();
+    c.fillStyle = '#e9c46a'; for (const x of [-60, -20, 20, 60]) c.fillRect(x - 6, -28, 12, 48);
+    c.fillStyle = '#2a9d8f'; c.beginPath(); c.roundRect(34, 6, 44, 100, 10); c.fill(); c.stroke();
+    c.fillStyle = '#e9c46a'; c.fillRect(35, 58, 42, 12);
+  },
 };
 const BOX = 200; // sticker box size in sticker units; displayed size = BOX * 0.9 * s * scale
 function itemScale(it) { return T().sc * 0.9 * it.s; }
@@ -151,7 +240,19 @@ function sync() {
 }
 BGS.forEach((b, i) => { const s = document.createElement('button'); s.className = 'sw'; s.title = 'Background ' + (i + 1); s.style.background = b.length > 1 ? `linear-gradient(135deg,${b[0]},${b[1]})` : b[0]; s.onclick = () => { st.bg = i; sync(); draw(); }; $('bgs').appendChild(s); });
 chips($('pats'), PATS, 'pat'); chips($('frames'), FRAMES, 'frame');
-ACCS.forEach(a => { const b = document.createElement('button'); b.textContent = '+ ' + NAMES[a]; b.onclick = () => { addAcc(a); }; $('acc').appendChild(b); });
+let cat = 'All';
+function buildAcc() {
+  const tabs = $('acctabs'), box = $('acc'); tabs.innerHTML = ''; box.innerHTML = '';
+  ['All', ...Object.keys(CATS)].forEach(k => { const b = document.createElement('button'); b.textContent = k; b.className = k === cat ? 'on' : ''; b.onclick = () => { cat = k; buildAcc(); }; tabs.appendChild(b); });
+  ACCS.filter(a => cat === 'All' || CATS[cat].includes(a)).forEach(a => {
+    const b = document.createElement('button'); b.className = 'acc'; b.dataset.type = a; b.title = NAMES[a];
+    const t = document.createElement('canvas'); t.width = t.height = 96; const c = t.getContext('2d'); c.fillStyle = '#e8e2f2'; c.beginPath(); c.roundRect(4, 4, 88, 88, 14); c.fill(); c.translate(48, 48); c.scale(.3, .3);
+    c.beginPath(); c.rect(-160, -160, 320, 320); c.clip(); (a === 'laser' ? () => { c.scale(.45, .45); DRAW[a](c); } : () => DRAW[a](c))();
+    b.appendChild(t); const l = document.createElement('span'); l.textContent = NAMES[a]; b.appendChild(l);
+    b.onclick = () => addAcc(a); box.appendChild(b);
+  });
+}
+buildAcc();
 function addAcc(type) { const d = DEF[type]; st.items.push({ type, x: d.x, y: d.y, s: d.s, r: 0 }); st.sel = st.items.length - 1; sync(); draw(); }
 
 $('zoom').oninput = e => { st.zoom = +e.target.value; draw(); };
@@ -194,10 +295,13 @@ const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const pick = a => a[Math.floor(Math.random() * a.length)];
 $('rand').onclick = () => {
   st.bg = Math.floor(Math.random() * BGS.length); st.pat = pick(PATS); st.frame = pick(FRAMES); st.zoom = +(1 + Math.random() * 0.6).toFixed(2);
-  st.items = []; const n = pick([1, 1, 2, 2, 3]); const pool = ['hat', 'crown', 'sunglasses', 'bowtie'];
-  // at most one headwear
-  const head = pick(['hat', 'crown', null]); if (head) st.items.push({ type: head, ...DEF[head], r: Math.round((Math.random() - .5) * 16) });
-  ['sunglasses', 'bowtie'].sort(() => Math.random() - .5).slice(0, Math.max(0, n - (head ? 1 : 0))).forEach(t => st.items.push({ type: t, ...DEF[t], r: Math.round((Math.random() - .5) * 12) }));
+  st.items = []; 
+  // at most one headwear, one face piece, one neck piece
+  const add = t => st.items.push({ type: t, ...DEF[t], r: Math.round((Math.random() - .5) * 12) });
+  const head = pick([...HEAD, null]); if (head) add(head);
+  const face = pick([...FACE, null]); if (face) add(face);
+  if (Math.random() < .5) add(pick(NECK));
+  if (!st.items.length) add(pick(HEAD));
   st.sel = -1; sync(); draw();
 };
 $('dl').onclick = () => {
