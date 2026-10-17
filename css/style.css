@@ -28,3 +28,26 @@ input[type=range]{width:100%}
 button.acc{display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 2px;font-size:.72rem;min-height:84px}
 button.acc canvas{width:56px;height:56px;background:none;border-radius:0;aspect-ratio:auto}
 @media(max-width:480px){.accgrid{max-height:200px;grid-template-columns:repeat(3,1fr)}h1{font-size:1.6rem}}
+
+/* accordions */
+details{background:#1d1b2b;border-radius:10px;margin:8px 0}
+summary{cursor:pointer;padding:12px 14px;font-size:.85rem;text-transform:uppercase;letter-spacing:1px;color:#ffb04a;font-weight:600;list-style:none;display:flex;justify-content:space-between;min-height:44px;align-items:center}
+summary::-webkit-details-marker{display:none}
+summary::after{content:'▾';transition:transform .15s}
+details[open]>summary::after{transform:rotate(180deg)}
+details .body{padding:0 12px 12px}
+.hint{margin:0 0 6px;font-size:.78rem;opacity:.6}
+.stage .sel{margin-top:8px}
+.sel button{padding:6px 10px}
+@media(max-width:700px){
+  header{padding:6px 10px 2px}header p{display:none}h1{font-size:1.2rem}
+  main{display:block;padding:0 10px 20px}
+  .stage{position:sticky;top:0;z-index:10;max-width:none;background:#16141f;padding:6px 0 8px;box-shadow:0 8px 10px -6px #000}
+  .stage canvas#c{width:min(100%,36dvh,36vh);margin:0 auto}
+  .stage .row{margin-top:6px}.stage .row button{padding:8px}
+  .stage .sel{grid-template-columns:1fr 1fr auto;align-items:center;gap:4px 8px;padding:6px 8px;margin-top:6px}
+  .stage .sel b{grid-column:1/-1;font-size:.8rem}
+  .stage .sel label{grid-template-columns:1fr;font-size:.7rem}
+  .panel{max-width:none}
+  .accgrid{max-height:34vh}
+}

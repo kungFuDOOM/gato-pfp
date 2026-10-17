@@ -12,32 +12,29 @@
     <button id="rand" class="pri">🎲 Randomize</button>
     <button id="dl" class="pri">⬇ Download PNG</button>
   </div>
-</section>
-<section class="panel">
-  <h2>Background</h2>
-  <div id="bgs" class="swatches"></div>
-  <h2>Pattern</h2>
-  <div id="pats" class="chips"></div>
-  <h2>Frame</h2>
-  <div id="frames" class="chips"></div>
-  <h2>Cat zoom</h2>
-  <input id="zoom" type="range" min="0.8" max="2.4" step="0.01" value="1.25">
-  <h2>Accessories <small>(tap to add, drag to move)</small></h2>
-  <div id="acctabs" class="chips tabs"></div>
-  <div id="acc" class="accgrid"></div>
   <div id="sel" class="sel hidden">
     <b id="selname">Selected</b>
     <label>Size <input id="selsize" type="range" min="0.2" max="3" step="0.01"></label>
     <label>Rotate <input id="selrot" type="range" min="-180" max="180" step="1"></label>
     <button id="seldel">Remove</button>
   </div>
-  <h2>Your photo</h2>
-  <div class="chips">
+</section>
+<section class="panel">
+  <details open><summary>Accessories</summary><div class="body">
+    <p class="hint">Tap to add, drag on the preview to move</p>
+    <div id="acctabs" class="chips tabs"></div>
+    <div id="acc" class="accgrid"></div>
+  </div></details>
+  <details open><summary>Background</summary><div class="body"><div id="bgs" class="swatches"></div></div></details>
+  <details><summary>Pattern</summary><div class="body"><div id="pats" class="chips"></div></div></details>
+  <details><summary>Frame</summary><div class="body"><div id="frames" class="chips"></div></div></details>
+  <details><summary>Cat zoom</summary><div class="body"><input id="zoom" type="range" min="0.8" max="2.4" step="0.01" value="1.25"></div></details>
+  <details><summary>Your photo</summary><div class="body"><div class="chips">
     <label class="btn">Upload<input id="file" type="file" accept="image/*" hidden></label>
     <button id="pface">As face</button>
     <button id="pbg">As background</button>
     <button id="pclear">Clear</button>
-  </div>
+  </div></div></details>
   <p class="foot">Made by kungFuDOOM · MIT</p>
 </section>
 </main>
