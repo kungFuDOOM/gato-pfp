@@ -1,56 +1,84 @@
-// Gato PFP by kungFuDOOM. No build step.
+// Gato PFP v2 by kungFuDOOM. No build step.
 const S = 1024;
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const $ = id => document.getElementById(id);
-
-// Cat cutout geometry (in the 800px source) and face area
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const CAT = { w: 800, h: 799, bx: 272, by: 12, bw: 377, bh: 743, faceX: 450, faceY: 215, faceR: 150 };
 
+// ---------- data
 const BGS = [
-  ['#ffb04a'], ['#ff7aa8'], ['#7bd88f'], ['#6ab7ff'], ['#b48cff'], ['#ffe27a'], ['#2b2740'], ['#f2eee6'],
-  ['#ff9a8b', '#ff6a88'], ['#a1c4fd', '#c2e9fb'], ['#fbc2eb', '#a6c1ee'], ['#f6d365', '#fda085'],
-  ['#0f2027', '#2c5364'], ['#43e97b', '#38f9d7'],
+  ['Sunny', '#ffb04a'], ['Bubblegum', '#ff7aa8'], ['Mint', '#7bd88f'], ['Sky', '#6ab7ff'], ['Grape', '#b48cff'], ['Lemon', '#ffe27a'], ['Midnight', '#2b2740'], ['Cream', '#f2eee6'],
+  ['Peach fizz', '#ff9a8b', '#ff6a88'], ['Ice', '#a1c4fd', '#c2e9fb'], ['Cotton candy', '#fbc2eb', '#a6c1ee'], ['Sunset', '#f6d365', '#fda085'],
+  ['Deep sea', '#0f2027', '#2c5364'], ['Aurora', '#43e97b', '#38f9d7'], ['Ocean wave', '#4facfe', '#00f2fe'], ['Berry', '#f093fb', '#f5576c'],
+  ['Forest', '#134e5e', '#71b280'], ['Mango', '#ffe259', '#ffa751'], ['Night sky', '#0f0c29', '#302b63'], ['Candy', '#ff9a9e', '#fad0c4'],
 ];
+const BGMAP = Object.fromEntries(BGS.map(b => [b[0], b]));
 const PATS = ['none', 'dots', 'stripes', 'checks', 'rays', 'stars'];
 const FRAMES = ['circle', 'rounded', 'square'];
-const ACCS = ['hat', 'crown', 'party', 'santa', 'wizard', 'halo', 'flowers', 'headphones', 'bandana', 'sunglasses', 'monocle', 'eyepatch', 'laser', 'mustache', 'bowtie', 'scarf'];
-const NAMES = { hat: 'Top hat', sunglasses: 'Sunglasses', bowtie: 'Bow tie', crown: 'Crown', party: 'Party hat', santa: 'Santa hat', wizard: 'Wizard hat', halo: 'Halo', flowers: 'Flower crown', headphones: 'Headphones', bandana: 'Bandana', monocle: 'Monocle', eyepatch: 'Eyepatch', laser: 'Laser eyes', mustache: 'Mustache', scarf: 'Scarf' };
-const CATS = { Head: ['hat', 'crown', 'party', 'santa', 'wizard', 'halo', 'flowers', 'headphones', 'bandana'], Face: ['sunglasses', 'monocle', 'eyepatch', 'laser', 'mustache'], Neck: ['bowtie', 'scarf'] };
-const HEAD = CATS.Head, FACE = CATS.Face, NECK = CATS.Neck;
+const SIZES = [1024, 2048];
+// fur recolor: h target hue (deg), sm saturation multiplier, lc contrast, lo lightness centre, tint = tint for white chest
+const SKINS = [
+  { id: 'orange', name: 'Orange', sw: '#f0a050' },
+  { id: 'grey', name: 'Grey', sw: '#9a9ca6', h: 225, sm: .1, lc: .85, lo: .56 },
+  { id: 'black', name: 'Black', sw: '#2a2830', h: 250, sm: .12, lc: .62, lo: .2, white: .45 },
+  { id: 'white', name: 'White', sw: '#f4f1ee', h: 30, sm: .12, lc: .5, lo: .9 },
+  { id: 'blue', name: 'Blue', sw: '#6a9fe0', h: 214, sm: .75, lc: .95, lo: .62, tint: .3 },
+  { id: 'pink', name: 'Pink', sw: '#f58db8', h: 338, sm: .5, lc: .8, lo: .78, tint: .25 },
+  { id: 'green', name: 'Green', sw: '#6cc07a', h: 126, sm: .7, lc: .9, lo: .6, tint: .3 },
+  { id: 'golden', name: 'Golden', sw: '#e8b82e', h: 45, sm: 1.2, lc: .95, lo: .7 },
+  { id: 'purple', name: 'Purple', sw: '#9a78d8', h: 272, sm: .7, lc: .92, lo: .6, tint: .3 },
+  { id: 'cream', name: 'Cream', sw: '#efd9b4', h: 38, sm: .4, lc: .6, lo: .8 },
+];
+const SMAP = Object.fromEntries(SKINS.map(k => [k.id, k]));
+const KEY = 'gato-pfp-v2';
 
-const st = { bg: 0, pat: 'dots', frame: 'circle', zoom: 1.25, items: [], sel: -1, photo: null, photoMode: 'face', pface: { x: CAT.faceX, y: CAT.faceY, s: 1 } };
+const DEFAULT = () => ({ bg: 'Sunny', pat: 'dots', frame: 'circle', zoom: 1.1, skin: 'orange', items: [mk('hat')] });
+function mk(id, extra) { const a = AMAP[id]; return { id: nid(), type: id, x: a.x, y: a.y, s: a.s, r: a.r, ...extra }; }
+let _n = 1; const nid = () => _n++;
+const st = { ...DEFAULT(), sel: null, photo: null, photoMode: 'face', pface: { x: CAT.faceX, y: CAT.faceY, s: 1 }, transp: false, size: 1024, scenes: [] };
 
+// ---------- images
 const catImg = new Image(); catImg.src = 'assets/gato-cutout.png';
-catImg.onload = () => { defaults(); draw(); window.__ready = true; };
+catImg.onload = () => { buildSkins(); draw(); window.__ready = true; };
+const skinCache = {};
+function skinCanvas(id) {
+  if (skinCache[id]) return skinCache[id];
+  const k = SMAP[id], c = document.createElement('canvas'); c.width = CAT.w; c.height = CAT.h; const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(catImg, 0, 0);
+  if (k.h != null) {
+    const im = x.getImageData(0, 0, c.width, c.height), d = im.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (!d[i + 3]) continue;
+      let [h, s, l] = rgb2hsl(d[i], d[i + 1], d[i + 2]);
+      const dist = Math.min(Math.abs(h - 32), 360 - Math.abs(h - 32));
+      const wh = dist < 44 ? 1 : dist < 85 ? 1 - (dist - 44) / 41 : 0;
+      const ws = smooth(.04, .22, s) * smooth(.1, .3, l);
+      const w = wh * ws;
+      const ll = clamp((l - .65) * k.lc + k.lo, 0, 1);
+      let nh = h, ns = s, nl = l, snap = false;
+      if (w > 0.01) { nh = k.h + (((h - 32 + 540) % 360) - 180) * .2; ns = s + (clamp(s * k.sm, 0, 1) - s) * w; nl = l + (ll - l) * w; snap = true; }
+      if (k.tint && w < 1 && l > .5) { const tw = (1 - w) * (1 - smooth(.16, .35, s)) * smooth(.5, .8, l); if (tw > 0.01) { ns = ns + (k.tint - ns) * tw; if (!snap) nh = k.h; snap = true; } }
+      const o = hsl2rgb((nh + 360) % 360, clamp(ns, 0, 1), clamp(nl, 0, 1)); d[i] = o[0]; d[i + 1] = o[1]; d[i + 2] = o[2];
+    }
+    x.putImageData(im, 0, 0);
+  }
+  return skinCache[id] = c;
+}
+function smooth(a, b, v) { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
+function rgb2hsl(r, g, b) { r /= 255; g /= 255; b /= 255; const M = Math.max(r, g, b), m = Math.min(r, g, b), l = (M + m) / 2; let h = 0, s = 0; if (M !== m) { const d = M - m; s = l > .5 ? d / (2 - M - m) : d / (M + m); h = M === r ? (g - b) / d + (g < b ? 6 : 0) : M === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; } return [h, s, l]; }
+function hsl2rgb(h, s, l) { const f = n => { const k = (n + h / 30) % 12, a = s * Math.min(l, 1 - l); return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); }; return [f(0), f(8), f(4)]; }
 
-// Default placements in cat-source coords (so stickers follow the cat)
-const DEF = {
-  hat: { x: 450, y: 92, s: 1.0 }, sunglasses: { x: 446, y: 225, s: 1.0 },
-  bowtie: { x: 452, y: 400, s: 0.8 }, crown: { x: 450, y: 70, s: 1.0 },
-  party: { x: 452, y: 50, s: 0.95 }, santa: { x: 448, y: 100, s: 1.4 }, wizard: { x: 452, y: 30, s: 1.25 },
-  halo: { x: 450, y: 38, s: 1.0 }, flowers: { x: 450, y: 78, s: 1.7 }, headphones: { x: 450, y: 125, s: 1.72 },
-  bandana: { x: 450, y: 125, s: 1.8 }, monocle: { x: 515, y: 228, s: 0.78 }, eyepatch: { x: 515, y: 226, s: 0.8 },
-  laser: { x: 449, y: 225, s: 1.12 }, mustache: { x: 442, y: 318, s: 0.75 }, scarf: { x: 452, y: 425, s: 1.6 },
-};
-function defaults() { if (!st.items.length) { addAcc('hat'); } }
-
-// ---- coordinate transform: cat source -> canvas
+// ---------- transform: cat source -> canvas (1024 space)
 function T() {
-  const base = (S * 0.92) / CAT.bh * 1.0;
-  const sc = base * st.zoom;
-  // keep the face roughly centred as zoom grows
-  const fx = CAT.faceX, fy = CAT.faceY;
-  const t = Math.min(1, Math.max(0, (st.zoom - 0.8) / 0.9));
-  const cx = S / 2, cy = S * (0.54 - 0.06 * t * 0) ;
-  // anchor point blends from body-centre to face
+  const sc = (S * 0.92) / CAT.bh * st.zoom;
+  const t = clamp((st.zoom - 0.8) / 0.9, 0, 1);
   const ax = CAT.bx + CAT.bw / 2, ay = CAT.by + CAT.bh / 2;
-  const px = ax + (fx - ax) * t, py = ay + (fy - ay) * t;
-  const tx = S / 2 - px * sc, ty = S * (0.5 + 0.0 * t) - py * sc + (1 - t) * 0 ;
-  return { sc, tx, ty: ty + S * 0.04 * (1 - t) * 0 };
+  const px = ax + (CAT.faceX - ax) * t, py = ay + (CAT.faceY - ay) * t;
+  return { sc, tx: S / 2 - px * sc, ty: S * 0.5 - py * sc };
 }
 const toC = (x, y) => { const t = T(); return [x * t.sc + t.tx, y * t.sc + t.ty]; };
-const toS = (x, y) => { const t = T(); return [(x - t.tx) / t.sc, (y - t.ty) / t.sc]; };
 
+// ---------- drawing
+let K = 1; // export scale (shadow sizes don't follow the CTM)
 function frameMask(c) {
   c.beginPath();
   if (st.frame === 'circle') c.arc(S / 2, S / 2, S / 2, 0, Math.PI * 2);
@@ -58,11 +86,13 @@ function frameMask(c) {
   else c.rect(0, 0, S, S);
   c.clip();
 }
-
+const sceneMap = () => Object.fromEntries(st.scenes.map(s => ['scene:' + s.file, s]));
 function drawBg(c) {
-  const b = BGS[st.bg];
-  if (b.length === 1) c.fillStyle = b[0];
-  else { const g = c.createLinearGradient(0, 0, S, S); g.addColorStop(0, b[0]); g.addColorStop(1, b[1]); c.fillStyle = g; }
+  const sc = sceneMap()[st.bg];
+  if (sc) { cover(c, sc.img); return; }
+  const b = BGMAP[st.bg] || BGS[0];
+  if (b.length === 2) c.fillStyle = b[1];
+  else { const g = c.createLinearGradient(0, 0, S, S); g.addColorStop(0, b[1]); g.addColorStop(1, b[2]); c.fillStyle = g; }
   c.fillRect(0, 0, S, S);
   c.save(); c.fillStyle = 'rgba(255,255,255,.22)'; c.strokeStyle = 'rgba(255,255,255,.22)';
   const p = st.pat;
@@ -73,132 +103,27 @@ function drawBg(c) {
   if (p === 'stars') for (let y = 50; y < S; y += 150) for (let x = (y / 150 % 2 ? 125 : 50); x < S; x += 150) star(c, x, y, 26, 11);
   c.restore();
 }
-function star(c, x, y, R, r) { c.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r : R; c[i ? 'lineTo' : 'moveTo'](x + Math.cos(a) * rr, y + Math.sin(a) * rr); } c.closePath(); c.fill(); }
-
 function cover(c, img) { const k = Math.max(S / img.width, S / img.height); const w = img.width * k, h = img.height * k; c.drawImage(img, (S - w) / 2, (S - h) / 2, w, h); }
 
-// ---- stickers: drawn in a 200x200 box centred on origin
-const DRAW = {
-  hat(c) {
-    c.fillStyle = '#1d1b26'; c.beginPath(); c.ellipse(0, 45, 100, 18, 0, 0, 7); c.fill();
-    c.beginPath(); c.roundRect(-58, -70, 116, 118, 10); c.fill();
-    c.fillStyle = '#c0392b'; c.fillRect(-58, 14, 116, 24);
-    c.fillStyle = 'rgba(255,255,255,.15)'; c.fillRect(-46, -62, 14, 70);
-  },
-  sunglasses(c) {
-    c.fillStyle = '#111'; c.strokeStyle = '#111'; c.lineWidth = 10; c.lineJoin = 'round';
-    c.beginPath(); c.moveTo(-100, -20); c.lineTo(-80, -22); c.stroke();
-    c.beginPath(); c.moveTo(100, -20); c.lineTo(80, -22); c.stroke();
-    c.beginPath(); c.moveTo(-14, -14); c.quadraticCurveTo(0, -28, 14, -14); c.stroke();
-    for (const s of [-1, 1]) { c.beginPath(); c.roundRect(s < 0 ? -84 : 10, -30, 74, 56, [10, 10, 30, 30]); c.fill(); }
-    c.fillStyle = 'rgba(255,255,255,.3)';
-    for (const s of [-1, 1]) { c.beginPath(); c.moveTo((s < 0 ? -72 : 22), -22); c.lineTo((s < 0 ? -50 : 44), -22); c.lineTo((s < 0 ? -66 : 28), 4); c.closePath(); c.fill(); }
-  },
-  bowtie(c) {
-    c.fillStyle = '#e63946'; c.strokeStyle = '#9d1f2b'; c.lineWidth = 5;
-    for (const s of [-1, 1]) { c.beginPath(); c.moveTo(0, 0); c.lineTo(s * 85, -48); c.quadraticCurveTo(s * 98, 0, s * 85, 48); c.closePath(); c.fill(); c.stroke(); }
-    c.beginPath(); c.roundRect(-18, -24, 36, 48, 10); c.fill(); c.stroke();
-  },
-  crown(c) {
-    c.fillStyle = '#ffd23f'; c.strokeStyle = '#b8860b'; c.lineWidth = 6; c.lineJoin = 'round';
-    c.beginPath(); c.moveTo(-85, 50); c.lineTo(-95, -50); c.lineTo(-45, -5); c.lineTo(0, -65); c.lineTo(45, -5); c.lineTo(95, -50); c.lineTo(85, 50); c.closePath(); c.fill(); c.stroke();
-    c.fillStyle = '#e63946'; c.beginPath(); c.arc(0, 18, 12, 0, 7); c.fill();
-    c.fillStyle = '#3aa0ff'; for (const x of [-48, 48]) { c.beginPath(); c.arc(x, 24, 8, 0, 7); c.fill(); }
-    for (const [x, y] of [[-95, -50], [0, -65], [95, -50]]) { c.fillStyle = '#fff3b0'; c.beginPath(); c.arc(x, y, 9, 0, 7); c.fill(); c.stroke(); }
-  },
-
-  party(c) {
-    c.fillStyle = '#ff5fa2'; c.strokeStyle = '#b8336f'; c.lineWidth = 5; c.lineJoin = 'round';
-    c.beginPath(); c.moveTo(0, -85); c.lineTo(52, 50); c.lineTo(-52, 50); c.closePath(); c.fill(); c.stroke();
-    c.save(); c.clip(); c.strokeStyle = '#ffe27a'; c.lineWidth = 12;
-    for (let i = -3; i < 4; i++) { c.beginPath(); c.moveTo(-70, i * 28 + 30); c.lineTo(70, i * 28 - 20); c.stroke(); } c.restore();
-    c.fillStyle = '#6ab7ff'; c.beginPath(); c.arc(0, -88, 15, 0, 7); c.fill();
-    c.fillStyle = '#6ab7ff'; c.beginPath(); c.roundRect(-55, 42, 110, 14, 7); c.fill();
-  },
-  santa(c) {
-    c.fillStyle = '#d62839'; c.strokeStyle = '#8f1522'; c.lineWidth = 5; c.lineJoin = 'round';
-    c.beginPath(); c.moveTo(-80, 40); c.quadraticCurveTo(-70, -70, 20, -75); c.quadraticCurveTo(70, -70, 85, -10); c.lineTo(95, 40); c.closePath(); c.fill(); c.stroke();
-    c.fillStyle = '#fff'; c.strokeStyle = '#d9d9d9';
-    c.beginPath(); c.roundRect(-92, 22, 200, 38, 19); c.fill(); c.stroke();
-    c.beginPath(); c.arc(92, -4, 18, 0, 7); c.fill(); c.stroke();
-  },
-  wizard(c) {
-    c.fillStyle = '#4b3a9c'; c.strokeStyle = '#2a1f66'; c.lineWidth = 5; c.lineJoin = 'round';
-    c.beginPath(); c.ellipse(0, 55, 100, 17, 0, 0, 7); c.fill(); c.stroke();
-    c.beginPath(); c.moveTo(-58, 50); c.quadraticCurveTo(-30, -20, 10, -95); c.quadraticCurveTo(30, -40, 58, 50); c.closePath(); c.fill(); c.stroke();
-    c.fillStyle = '#ffd23f'; c.fillRect(-52, 22, 104, 14);
-    star(c, -8, -20, 14, 6); star(c, 18, 2, 9, 4);
-  },
-  halo(c) {
-    c.strokeStyle = '#ffd23f'; c.lineWidth = 14; c.shadowColor = '#fff3b0'; c.shadowBlur = 20;
-    c.beginPath(); c.ellipse(0, 0, 80, 22, 0, 0, 7); c.stroke();
-    c.lineWidth = 4; c.strokeStyle = '#fff3b0'; c.beginPath(); c.ellipse(0, -4, 78, 18, 0, Math.PI * 1.1, Math.PI * 1.7); c.stroke();
-  },
-  flowers(c) {
-    c.strokeStyle = '#3f9b4f'; c.lineWidth = 10; c.lineCap = 'round';
-    c.beginPath(); c.moveTo(-98, 25); c.quadraticCurveTo(0, -40, 98, 25); c.stroke();
-    const f = (x, y, col, r) => { c.fillStyle = col; for (let i = 0; i < 5; i++) { const a = i * 1.2566; c.beginPath(); c.arc(x + Math.cos(a) * r, y + Math.sin(a) * r, r * .8, 0, 7); c.fill(); } c.fillStyle = '#ffe27a'; c.beginPath(); c.arc(x, y, r * .7, 0, 7); c.fill(); };
-    f(-80, 12, '#ff7aa8', 13); f(-42, -8, '#ffffff', 12); f(0, -14, '#b48cff', 15); f(42, -8, '#ff9a5a', 12); f(80, 12, '#ff7aa8', 13);
-    c.fillStyle = '#3f9b4f'; for (const x of [-60, -20, 22, 62]) { c.beginPath(); c.ellipse(x, 0, 9, 5, .5, 0, 7); c.fill(); }
-  },
-  headphones(c) {
-    c.strokeStyle = '#2b2b36'; c.lineWidth = 14; c.lineCap = 'round';
-    c.beginPath(); c.arc(0, 20, 88, Math.PI * 1.03, Math.PI * 1.97); c.stroke();
-    for (const s of [-1, 1]) {
-      c.fillStyle = '#2b2b36'; c.beginPath(); c.roundRect(s * 92 - 20, -2, 40, 70, 16); c.fill();
-      c.fillStyle = '#ff5f5f'; c.beginPath(); c.roundRect(s * 92 - 12 + s * 4, 8, 22, 50, 10); c.fill();
-    }
-  },
-  bandana(c) {
-    c.fillStyle = '#e63946'; c.strokeStyle = '#9d1f2b'; c.lineWidth = 5; c.lineJoin = 'round';
-    c.beginPath(); c.moveTo(-100, -20); c.quadraticCurveTo(0, -45, 100, -20); c.lineTo(96, 8); c.quadraticCurveTo(0, 55, -96, 8); c.closePath(); c.fill(); c.stroke();
-    c.fillStyle = '#fff'; for (let i = -3; i <= 3; i++) { c.beginPath(); c.arc(i * 28, 4 + 8 * (1 - Math.abs(i) / 3), 5, 0, 7); c.fill(); }
-    c.fillStyle = '#e63946'; c.beginPath(); c.moveTo(96, 0); c.lineTo(130, -18); c.lineTo(122, 12); c.lineTo(138, 34); c.lineTo(100, 22); c.closePath(); c.fill(); c.stroke();
-  },
-  monocle(c) {
-    c.strokeStyle = '#d4a017'; c.lineWidth = 9; c.fillStyle = 'rgba(180,220,255,.25)';
-    c.beginPath(); c.arc(0, 0, 50, 0, 7); c.fill(); c.stroke();
-    c.lineWidth = 3; c.strokeStyle = '#d4a017'; c.beginPath(); c.moveTo(30, 44); c.quadraticCurveTo(46, 100, 20, 150); c.stroke();
-    c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 5; c.beginPath(); c.arc(0, 0, 36, Math.PI * 1.1, Math.PI * 1.5); c.stroke();
-  },
-  eyepatch(c) {
-    c.strokeStyle = '#111'; c.lineWidth = 6; c.lineCap = 'round';
-    c.beginPath(); c.moveTo(-50, -34); c.lineTo(-110, -78); c.moveTo(48, 30); c.lineTo(110, 70); c.stroke();
-    c.fillStyle = '#15151c'; c.beginPath(); c.ellipse(0, 0, 54, 46, -.2, 0, 7); c.fill();
-    c.strokeStyle = 'rgba(255,255,255,.2)'; c.lineWidth = 4; c.beginPath(); c.ellipse(0, 0, 44, 36, -.2, Math.PI * 1.1, Math.PI * 1.6); c.stroke();
-  },
-  laser(c) {
-    for (const x of [-66, 66]) {
-      const g = c.createRadialGradient(x, 0, 2, x, 0, 34); g.addColorStop(0, '#fff'); g.addColorStop(.35, '#ff6b6b'); g.addColorStop(1, 'rgba(255,0,0,0)');
-      c.fillStyle = g; c.beginPath(); c.arc(x, 0, 34, 0, 7); c.fill();
-      c.fillStyle = 'rgba(255,40,40,.85)'; c.beginPath(); c.moveTo(x, -9); c.lineTo(x + Math.sign(x) * 400, -26); c.lineTo(x + Math.sign(x) * 400, 26); c.lineTo(x, 9); c.closePath(); c.fill();
-      c.fillStyle = '#fff'; c.beginPath(); c.moveTo(x, -4); c.lineTo(x + Math.sign(x) * 400, -8); c.lineTo(x + Math.sign(x) * 400, 8); c.lineTo(x, 4); c.closePath(); c.fill();
-    }
-  },
-  mustache(c) {
-    c.fillStyle = '#3b2314'; c.strokeStyle = '#1f110a'; c.lineWidth = 4; c.lineJoin = 'round';
-    for (const s of [-1, 1]) {
-      c.beginPath(); c.moveTo(0, -14); c.quadraticCurveTo(s * 40, -40, s * 82, -6); c.quadraticCurveTo(s * 112, 6, s * 100, -30);
-      c.quadraticCurveTo(s * 116, 22, s * 70, 20); c.quadraticCurveTo(s * 30, 22, 0, 12); c.closePath(); c.fill(); c.stroke();
-    }
-  },
-  scarf(c) {
-    c.fillStyle = '#2a9d8f'; c.strokeStyle = '#17665c'; c.lineWidth = 5; c.lineJoin = 'round';
-    c.beginPath(); c.roundRect(-100, -30, 200, 52, 26); c.fill(); c.stroke();
-    c.fillStyle = '#e9c46a'; for (const x of [-60, -20, 20, 60]) c.fillRect(x - 6, -28, 12, 48);
-    c.fillStyle = '#2a9d8f'; c.beginPath(); c.roundRect(34, 6, 44, 100, 10); c.fill(); c.stroke();
-    c.fillStyle = '#e9c46a'; c.fillRect(35, 58, 42, 12);
-  },
-};
-const BOX = 200; // sticker box size in sticker units; displayed size = BOX * 0.9 * s * scale
-function itemScale(it) { return T().sc * 0.9 * it.s; }
+// sticker bounding boxes (in sticker units), measured once per type
+const bboxCache = {};
+function bbox(type) {
+  if (bboxCache[type]) return bboxCache[type];
+  const N = 1000, k = .8, o = document.createElement('canvas'); o.width = o.height = N; const c = o.getContext('2d', { willReadFrequently: true }); c.translate(N / 2, N / 2); c.scale(k, k);
+  try { DRAW[type](c); } catch (e) { }
+  const d = c.getImageData(0, 0, N, N).data; let x0 = N, y0 = N, x1 = 0, y1 = 0;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (d[(y * N + x) * 4 + 3] > 10) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < x0) { x0 = y0 = 300; x1 = y1 = 700; }
+  const f = v => (v - N / 2) / k;
+  return bboxCache[type] = { x0: f(x0), y0: f(y0), x1: f(x1 + 1), y1: f(y1 + 1) };
+}
+const itemScale = it => T().sc * 0.9 * it.s;
 function drawItem(c, it) {
   const [x, y] = toC(it.x, it.y); const k = itemScale(it);
   c.save(); c.translate(x, y); c.rotate(it.r * Math.PI / 180); c.scale(k, k);
-  c.shadowColor = 'rgba(0,0,0,.25)'; c.shadowBlur = 8; c.shadowOffsetY = 3;
+  c.shadowColor = 'rgba(0,0,0,.25)'; c.shadowBlur = 8 * K; c.shadowOffsetY = 3 * K;
   DRAW[it.type](c); c.restore();
 }
-
 function drawPhotoFace(c) {
   const p = st.pface, [x, y] = toC(p.x, p.y), r = CAT.faceR * T().sc * p.s;
   c.save(); c.beginPath(); c.arc(x, y, r, 0, 7); c.clip();
@@ -206,108 +131,220 @@ function drawPhotoFace(c) {
   c.drawImage(im, x - im.width * k / 2, y - im.height * k / 2, im.width * k, im.height * k);
   c.restore(); c.save(); c.lineWidth = 8; c.strokeStyle = '#fff'; c.beginPath(); c.arc(x, y, r, 0, 7); c.stroke(); c.restore();
 }
-
-function render(c, ui) {
-  c.clearRect(0, 0, S, S);
+function render(c, ui, N) {
+  N = N || S; K = N / S;
+  c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, N, N); c.scale(K, K);
   c.save(); frameMask(c);
-  drawBg(c);
+  if (!st.transp) drawBg(c);
   if (st.photo && st.photoMode === 'bg') cover(c, st.photo);
   const t = T();
-  if (catImg.complete && catImg.naturalWidth) { c.save(); c.shadowColor = 'rgba(0,0,0,.3)'; c.shadowBlur = 24; c.shadowOffsetY = 10; c.drawImage(catImg, t.tx, t.ty, CAT.w * t.sc, CAT.h * t.sc); c.restore(); }
+  st.items.filter(i => AMAP[i.type].z === 0).forEach(it => drawItem(c, it));
+  if (catImg.complete && catImg.naturalWidth) { c.save(); c.shadowColor = 'rgba(0,0,0,.3)'; c.shadowBlur = 24 * K; c.shadowOffsetY = 10 * K; c.drawImage(skinCanvas(st.skin), t.tx, t.ty, CAT.w * t.sc, CAT.h * t.sc); c.restore(); }
   if (st.photo && st.photoMode === 'face') drawPhotoFace(c);
-  st.items.forEach(it => drawItem(c, it));
+  st.items.filter(i => AMAP[i.type].z !== 0).forEach(it => drawItem(c, it));
   c.restore();
-  if (ui && st.sel >= 0) { // selection ring
-    c.save(); const it = st.items[st.sel]; const [x, y] = toC(it.x, it.y); c.strokeStyle = '#fff'; c.setLineDash([14, 10]); c.lineWidth = 4; c.shadowColor = '#000'; c.shadowBlur = 4;
-    c.beginPath(); c.arc(x, y, itemScale(it) * 100, 0, 7); c.stroke(); c.restore();
+  if (ui && st.sel) {
+    const it = st.sel, b = bbox(it.type), [x, y] = toC(it.x, it.y), k = itemScale(it);
+    c.save(); c.translate(x, y); c.rotate(it.r * Math.PI / 180); c.scale(k, k); c.strokeStyle = '#fff'; c.setLineDash([14 / k, 10 / k]); c.lineWidth = 4 / k; c.shadowColor = '#000'; c.shadowBlur = 4;
+    c.strokeRect(b.x0 - 8, b.y0 - 8, b.x1 - b.x0 + 16, b.y1 - b.y0 + 16); c.restore();
   }
+  c.restore();
 }
 function draw() { render(ctx, true); }
 
-// ---- UI building
-function chips(el, list, key, label) {
-  el.innerHTML = '';
-  list.forEach(v => { const b = document.createElement('button'); b.textContent = label ? label(v) : v; b.dataset.v = v; b.onclick = () => { st[key] = v; sync(); draw(); }; el.appendChild(b); });
+// ---------- state / history / persistence
+const snap = () => JSON.stringify({ bg: st.bg, pat: st.pat, frame: st.frame, zoom: st.zoom, skin: st.skin, items: st.items.map(({ type, x, y, s, r }) => ({ type, x, y, s, r })) });
+function apply(js) {
+  const o = JSON.parse(js); st.bg = o.bg; st.pat = o.pat; st.frame = o.frame; st.zoom = o.zoom; st.skin = SMAP[o.skin] ? o.skin : 'orange';
+  st.items = (o.items || []).filter(i => AMAP[i.type]).map(i => ({ id: nid(), ...i })); sortItems(); st.sel = null;
 }
-function sync() {
-  document.querySelectorAll('#bgs .sw').forEach((b, i) => b.classList.toggle('on', i === st.bg));
+let hist = [], hi = -1;
+function commit() { const s = snap(); if (hist[hi] === s) return; hist = hist.slice(0, hi + 1); hist.push(s); if (hist.length > 80) hist.shift(); hi = hist.length - 1; save(); refresh(); }
+function undo() { if (hi > 0) { hi--; apply(hist[hi]); save(); refresh(); draw(); } }
+function redo() { if (hi < hist.length - 1) { hi++; apply(hist[hi]); save(); refresh(); draw(); } }
+function save() { try { localStorage.setItem(KEY, JSON.stringify({ state: JSON.parse(snap()), size: st.size, transp: st.transp })); } catch (e) { } }
+function load() { try { const o = JSON.parse(localStorage.getItem(KEY)); if (!o) return false; apply(JSON.stringify(o.state)); if (SIZES.includes(o.size)) st.size = o.size; st.transp = !!o.transp; return true; } catch (e) { return false; } }
+function sortItems() { st.items.sort((a, b) => AMAP[a.type].z - AMAP[b.type].z); }
+function addAcc(type) {
+  const ex = st.items.find(i => i.type === type); if (ex) { st.sel = ex; refresh(); draw(); return; }
+  const it = mk(type); st.items.push(it); sortItems(); st.sel = it; commit(); draw();
+}
+function removeSel() { if (!st.sel) return; st.items = st.items.filter(i => i !== st.sel); st.sel = null; commit(); draw(); }
+
+// ---------- UI
+function chips(el, list, key) {
+  el.innerHTML = '';
+  list.forEach(v => { const b = document.createElement('button'); b.textContent = typeof v === 'number' ? v + ' px' : v; b.dataset.v = v; b.onclick = () => { st[key] = v; if (key === 'size') save(); else commit(); refresh(); draw(); }; el.appendChild(b); });
+}
+function refresh() {
+  document.querySelectorAll('#bgs .tile,#scenes .tile').forEach(b => b.classList.toggle('on', b.dataset.v === st.bg));
   document.querySelectorAll('#pats button').forEach(b => b.classList.toggle('on', b.dataset.v === st.pat));
   document.querySelectorAll('#frames button').forEach(b => b.classList.toggle('on', b.dataset.v === st.frame));
+  document.querySelectorAll('#sizes button').forEach(b => b.classList.toggle('on', +b.dataset.v === st.size));
+  document.querySelectorAll('#skins .tile').forEach(b => b.classList.toggle('on', b.dataset.v === st.skin));
   $('pface').classList.toggle('on', st.photoMode === 'face'); $('pbg').classList.toggle('on', st.photoMode === 'bg');
-  $('zoom').value = st.zoom;
+  $('zoom').value = st.zoom; $('transp').checked = st.transp;
   document.querySelectorAll('#acc button.acc').forEach(b => { const on = st.items.some(i => i.type === b.dataset.type); b.classList.toggle('added', on); b.setAttribute('aria-pressed', on); });
-  const it = st.items[st.sel]; $('sel').classList.toggle('hidden', !it);
-  if (it) { $('selname').textContent = NAMES[it.type]; $('selsize').value = it.s; $('selrot').value = it.r; }
+  const it = st.sel; $('sel').classList.toggle('hidden', !it);
+  if (it) { $('selname').textContent = AMAP[it.type].name; $('selsize').value = it.s; $('selrot').value = it.r; }
+  $('undo').disabled = hi <= 0; $('redo').disabled = hi >= hist.length - 1;
+  $('acccount').textContent = `${st.items.length} on · ${ACCS.length} available`;
 }
-BGS.forEach((b, i) => { const s = document.createElement('button'); s.className = 'sw'; s.title = 'Background ' + (i + 1); s.style.background = b.length > 1 ? `linear-gradient(135deg,${b[0]},${b[1]})` : b[0]; s.onclick = () => { st.bg = i; sync(); draw(); }; $('bgs').appendChild(s); });
-chips($('pats'), PATS, 'pat'); chips($('frames'), FRAMES, 'frame');
+function tile(label, v, bgcss, parent, onclick, cls) {
+  const b = document.createElement('button'); b.className = 'tile ' + (cls || ''); b.dataset.v = v; b.title = label;
+  const sw = document.createElement('span'); sw.className = 'sw'; sw.style.cssText = bgcss; b.appendChild(sw);
+  const l = document.createElement('span'); l.className = 'lb'; l.textContent = label; b.appendChild(l); b.onclick = onclick; parent.appendChild(b); return b;
+}
+function buildBgs() {
+  $('bgs').innerHTML = '';
+  BGS.forEach(b => tile(b[0], b[0], b.length > 2 ? `background:linear-gradient(135deg,${b[1]},${b[2]})` : `background:${b[1]}`, $('bgs'), () => { st.bg = b[0]; commit(); draw(); }));
+}
+function buildScenes() {
+  const box = $('scenes'); box.innerHTML = ''; $('scenegrp').hidden = !st.scenes.length;
+  st.scenes.forEach(s => tile(s.name, 'scene:' + s.file, `background:url(assets/bg/${s.file}) center/cover`, box, () => { st.bg = 'scene:' + s.file; commit(); draw(); }, 'scene'));
+}
+async function loadScenes() {
+  try {
+    const r = await fetch('assets/bg/scenes.json', { cache: 'no-cache' }); if (!r.ok) throw 0; const list = await r.json();
+    const out = await Promise.all(list.map(e => new Promise(res => { const img = new Image(); img.onload = () => res({ name: e.name, file: e.file, img }); img.onerror = () => res(null); img.src = 'assets/bg/' + e.file; })));
+    st.scenes = out.filter(Boolean);
+  } catch (e) { st.scenes = []; }
+  buildScenes(); refresh(); draw();
+}
+function buildSkins() {
+  const box = $('skins'); box.innerHTML = '';
+  SKINS.forEach(k => {
+    const t = document.createElement('canvas'); t.width = t.height = 120; t.getContext('2d').drawImage(skinCanvas(k.id), 285, 10, 360, 360, 0, 0, 120, 120);
+    const b = document.createElement('button'); b.className = 'tile skin'; b.dataset.v = k.id; b.title = k.name; b.appendChild(t);
+    const l = document.createElement('span'); l.className = 'lb'; l.textContent = k.name; b.appendChild(l);
+    b.onclick = () => { st.skin = k.id; commit(); draw(); }; box.appendChild(b);
+  });
+  refresh();
+}
+const thumbCache = {};
+function thumb(type) {
+  if (thumbCache[type]) return thumbCache[type];
+  const b = bbox(type), w = b.x1 - b.x0, h = b.y1 - b.y0, k = 64 / Math.max(w, h);
+  const t = document.createElement('canvas'); t.width = t.height = 72; const c = t.getContext('2d');
+  c.translate(36 - (b.x0 + w / 2) * k, 36 - (b.y0 + h / 2) * k); c.scale(k, k); DRAW[type](c);
+  return thumbCache[type] = t;
+}
 let cat = 'All';
 function buildAcc() {
   const tabs = $('acctabs'), box = $('acc'); tabs.innerHTML = ''; box.innerHTML = '';
-  ['All', ...Object.keys(CATS)].forEach(k => { const b = document.createElement('button'); b.textContent = k; b.className = k === cat ? 'on' : ''; b.onclick = () => { cat = k; buildAcc(); }; tabs.appendChild(b); });
-  ACCS.filter(a => cat === 'All' || CATS[cat].includes(a)).forEach(a => {
-    const b = document.createElement('button'); b.className = 'acc'; b.dataset.type = a; b.title = NAMES[a];
-    const t = document.createElement('canvas'); t.width = t.height = 96; const c = t.getContext('2d'); c.fillStyle = '#e8e2f2'; c.beginPath(); c.roundRect(4, 4, 88, 88, 14); c.fill(); c.translate(48, 48); c.scale(.3, .3);
-    c.beginPath(); c.rect(-160, -160, 320, 320); c.clip(); (a === 'laser' ? () => { c.scale(.45, .45); DRAW[a](c); } : () => DRAW[a](c))();
-    b.appendChild(t); const l = document.createElement('span'); l.textContent = NAMES[a]; b.appendChild(l);
-    b.onclick = () => addAcc(a); box.appendChild(b);
+  ['All', ...CATEGORIES].forEach(k => { const b = document.createElement('button'); b.textContent = k; b.className = k === cat ? 'on' : ''; b.setAttribute('role', 'tab'); b.onclick = () => { cat = k; buildAcc(); }; tabs.appendChild(b); });
+  ACCS.filter(a => cat === 'All' || a.cat === cat).forEach(a => {
+    const b = document.createElement('button'); b.className = 'acc'; b.dataset.type = a.id; b.title = a.name;
+    const t = document.createElement('canvas'); t.width = t.height = 72; t.getContext('2d').drawImage(thumb(a.id), 0, 0); b.appendChild(t);
+    const l = document.createElement('span'); l.textContent = a.name; b.appendChild(l); b.onclick = () => addAcc(a.id); box.appendChild(b);
   });
-  sync();
+  refresh();
 }
-buildAcc(); 
-function addAcc(type) { const ex = st.items.findIndex(i => i.type === type); if (ex >= 0) { st.sel = ex; sync(); draw(); return; } const d = DEF[type]; st.items.push({ type, x: d.x, y: d.y, s: d.s, r: 0 }); st.sel = st.items.length - 1; sync(); draw(); }
+function setup() {
+  chips($('pats'), PATS, 'pat'); chips($('frames'), FRAMES, 'frame'); chips($('sizes'), SIZES, 'size'); buildBgs(); buildAcc();
+}
 
-$('zoom').oninput = e => { st.zoom = +e.target.value; draw(); };
-$('selsize').oninput = e => { const it = st.items[st.sel]; if (it) { it.s = +e.target.value; draw(); } };
-$('selrot').oninput = e => { const it = st.items[st.sel]; if (it) { it.r = +e.target.value; draw(); } };
-$('seldel').onclick = () => { if (st.sel >= 0) { st.items.splice(st.sel, 1); st.sel = -1; sync(); draw(); } };
-$('file').onchange = e => { const f = e.target.files[0]; if (!f) return; const im = new Image(); im.onload = () => { st.photo = im; st.pface = { x: CAT.faceX, y: CAT.faceY, s: 1 }; sync(); draw(); window.__photo = true; }; im.src = URL.createObjectURL(f); };
-$('pface').onclick = () => { st.photoMode = 'face'; sync(); draw(); };
-$('pbg').onclick = () => { st.photoMode = 'bg'; sync(); draw(); };
+// ---------- inputs
+$('zoom').oninput = e => { st.zoom = +e.target.value; draw(); }; $('zoom').onchange = commit;
+$('selsize').oninput = e => { if (st.sel) { st.sel.s = +e.target.value; draw(); } }; $('selsize').onchange = commit;
+$('selrot').oninput = e => { if (st.sel) { st.sel.r = +e.target.value; draw(); } }; $('selrot').onchange = commit;
+$('seldel').onclick = removeSel;
+$('transp').onchange = e => { st.transp = e.target.checked; save(); draw(); };
+$('undo').onclick = undo; $('redo').onclick = redo;
+$('reset').onclick = () => { apply(JSON.stringify({ ...DEFAULT(), items: DEFAULT().items.map(i => ({ type: i.type, x: i.x, y: i.y, s: i.s, r: i.r })) })); st.transp = false; st.photo = null; commit(); draw(); toast('Reset – undo brings it back'); };
+$('file').onchange = e => { const f = e.target.files[0]; if (!f) return; const im = new Image(); im.onload = () => { st.photo = im; st.pface = { x: CAT.faceX, y: CAT.faceY, s: 1 }; refresh(); draw(); window.__photo = true; }; im.src = URL.createObjectURL(f); };
+$('pface').onclick = () => { st.photoMode = 'face'; refresh(); draw(); };
+$('pbg').onclick = () => { st.photoMode = 'bg'; refresh(); draw(); };
 $('pclear').onclick = () => { st.photo = null; $('file').value = ''; draw(); };
 
-// ---- drag / pinch
-const pts = new Map(); let drag = null, pinch = null;
+// drag / pinch
+const pts = new Map(); let drag = null, pinch = null, moved = false;
 function pos(e) { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * S / r.width, (e.clientY - r.top) * S / r.height]; }
 function hit(x, y) {
-  for (let i = st.items.length - 1; i >= 0; i--) { const it = st.items[i]; const [cx, cy] = toC(it.x, it.y); if (Math.hypot(x - cx, y - cy) < itemScale(it) * 100) return i; }
+  for (let i = st.items.length - 1; i >= 0; i--) {
+    const it = st.items[i], b = bbox(it.type), [cx, cy] = toC(it.x, it.y), k = itemScale(it), a = -it.r * Math.PI / 180;
+    const dx = (x - cx) / k, dy = (y - cy) / k, lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a), p = 12;
+    if (lx >= b.x0 - p && lx <= b.x1 + p && ly >= b.y0 - p && ly <= b.y1 + p) return it;
+  }
   if (st.photo && st.photoMode === 'face') { const p = st.pface, [cx, cy] = toC(p.x, p.y); if (Math.hypot(x - cx, y - cy) < CAT.faceR * T().sc * p.s) return 'photo'; }
-  return -1;
+  return null;
 }
 cv.addEventListener('pointerdown', e => {
-  cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, pos(e));
+  cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, pos(e)); moved = false;
   if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), tgt: drag && drag.tgt, s: drag && drag.s0 }; return; }
   const [x, y] = pos(e); const h = hit(x, y);
-  if (h === 'photo') { st.sel = -1; drag = { tgt: 'photo', ox: x, oy: y, x0: st.pface.x, y0: st.pface.y, s0: st.pface.s }; }
-  else if (h >= 0) { st.sel = h; const it = st.items[h]; drag = { tgt: it, ox: x, oy: y, x0: it.x, y0: it.y, s0: it.s }; } else { st.sel = -1; drag = null; }
-  sync(); draw();
+  if (h === 'photo') { st.sel = null; drag = { tgt: 'photo', ox: x, oy: y, x0: st.pface.x, y0: st.pface.y, s0: st.pface.s }; }
+  else if (h) { st.sel = h; drag = { tgt: h, ox: x, oy: y, x0: h.x, y0: h.y, s0: h.s }; } else { st.sel = null; drag = null; }
+  refresh(); draw();
 });
 cv.addEventListener('pointermove', e => {
   if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, pos(e));
-  if (pts.size === 2 && pinch && pinch.tgt) { const [a, b] = [...pts.values()]; const k = Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d; if (pinch.tgt === 'photo') st.pface.s = clamp(pinch.s * k, .4, 3); else pinch.tgt.s = clamp(pinch.s * k, .2, 3); sync(); draw(); return; }
+  if (pts.size === 2 && pinch && pinch.tgt) { const [a, b] = [...pts.values()]; const k = Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.d; moved = true; if (pinch.tgt === 'photo') st.pface.s = clamp(pinch.s * k, .4, 3); else pinch.tgt.s = clamp(pinch.s * k, .2, 3.5); refresh(); draw(); return; }
   if (!drag || pts.size > 1) return; const [x, y] = pos(e); const sc = T().sc;
-  const o = drag.tgt === 'photo' ? st.pface : drag.tgt; o.x = drag.x0 + (x - drag.ox) / sc; o.y = drag.y0 + (y - drag.oy) / sc; draw();
+  const o = drag.tgt === 'photo' ? st.pface : drag.tgt; o.x = drag.x0 + (x - drag.ox) / sc; o.y = drag.y0 + (y - drag.oy) / sc; moved = true; draw();
 });
-const up = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; if (!pts.size) drag = null; };
+const up = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; if (!pts.size) { drag = null; if (moved) commit(); moved = false; } };
 cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
-cv.addEventListener('wheel', e => { const it = st.items[st.sel]; if (!it) return; e.preventDefault(); it.s = clamp(it.s * (e.deltaY < 0 ? 1.06 : 0.94), .2, 3); sync(); draw(); }, { passive: false });
-const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+let wt; cv.addEventListener('wheel', e => { const it = st.sel; if (!it) return; e.preventDefault(); it.s = clamp(it.s * (e.deltaY < 0 ? 1.06 : 0.94), .2, 3.5); refresh(); draw(); clearTimeout(wt); wt = setTimeout(commit, 400); }, { passive: false });
 
-// ---- randomize / download
+// keyboard (desktop)
+document.addEventListener('keydown', e => {
+  const tag = (e.target.tagName || '').toLowerCase(); if (tag === 'input' && e.target.type !== 'checkbox' && e.target.type !== 'range') return; if (tag === 'textarea') return;
+  const mod = e.ctrlKey || e.metaKey, k = e.key;
+  if (mod && k.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if (mod && k.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
+  if (mod && k.toLowerCase() === 's') { e.preventDefault(); download(); return; }
+  if (mod || e.altKey) return;
+  const it = st.sel;
+  if (k === 'Escape') { if (!$('modal').classList.contains('hidden')) closeModal(); else { st.sel = null; refresh(); draw(); } return; }
+  if (k.toLowerCase() === 'r' && tag !== 'select') { randomize(); return; }
+  if (!it || tag === 'range') return;
+  const step = (e.shiftKey ? 20 : 5);
+  if (k === 'Delete' || k === 'Backspace') { e.preventDefault(); removeSel(); }
+  else if (k.startsWith('Arrow')) { e.preventDefault(); it.x += k === 'ArrowRight' ? step : k === 'ArrowLeft' ? -step : 0; it.y += k === 'ArrowDown' ? step : k === 'ArrowUp' ? -step : 0; draw(); clearTimeout(wt); wt = setTimeout(commit, 350); }
+  else if (k === '+' || k === '=') { it.s = clamp(it.s * 1.06, .2, 3.5); refresh(); draw(); clearTimeout(wt); wt = setTimeout(commit, 350); }
+  else if (k === '-' || k === '_') { it.s = clamp(it.s / 1.06, .2, 3.5); refresh(); draw(); clearTimeout(wt); wt = setTimeout(commit, 350); }
+  else if (k === '[' || k === ']') { it.r = clamp(it.r + (k === ']' ? 5 : -5), -180, 180); refresh(); draw(); clearTimeout(wt); wt = setTimeout(commit, 350); }
+});
+
+// ---------- randomize (one per slot, so never duplicates)
 const pick = a => a[Math.floor(Math.random() * a.length)];
-$('rand').onclick = () => {
-  st.bg = Math.floor(Math.random() * BGS.length); st.pat = pick(PATS); st.frame = pick(FRAMES); st.zoom = +(1 + Math.random() * 0.6).toFixed(2);
-  st.items = []; 
-  // at most one headwear, one face piece, one neck piece
-  const add = t => !st.items.some(i => i.type === t) && st.items.push({ type: t, ...DEF[t], r: Math.round((Math.random() - .5) * 12) });
-  const head = pick([...HEAD, null]); if (head) add(head);
-  const face = pick([...FACE, null]); if (face) add(face);
-  if (Math.random() < .5) add(pick(NECK));
-  if (!st.items.length) add(pick(HEAD));
-  st.sel = -1; sync(); draw();
-};
-$('dl').onclick = () => {
-  const o = document.createElement('canvas'); o.width = o.height = S; render(o.getContext('2d'), false);
-  o.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'gato-pfp.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }, 'image/png');
-};
-sync();
+const bySlot = s => ACCS.filter(a => a.slot === s);
+function randomize() {
+  const bgs = [...BGS.map(b => b[0]), ...st.scenes.map(s => 'scene:' + s.file)];
+  st.bg = pick(bgs); st.pat = pick(PATS); st.frame = pick(FRAMES); st.zoom = +(0.95 + Math.random() * 0.45).toFixed(2); st.skin = pick(SKINS).id;
+  const ids = new Set(); const add = (slot, p) => { if (Math.random() < p) ids.add(pick(bySlot(slot)).id); };
+  add('hat', .8); add('eyes', .6); add('face', .35); add('neck', .45); add('outfit', .4); add('hand', .45); add('extra', .35);
+  if (!ids.size) ids.add(pick(bySlot('hat')).id);
+  st.items = [...ids].map(id => mk(id, { r: Math.round(AMAP[id].r + (Math.random() - .5) * 8) })); sortItems(); st.sel = null; commit(); draw();
+}
+$('rand').onclick = randomize;
+
+// ---------- export / share
+const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function toBlob(N) { const o = document.createElement('canvas'); o.width = o.height = N; render(o.getContext('2d'), false, N); K = 1; return new Promise(r => o.toBlob(r, 'image/png')); }
+const filename = () => `gato-pfp-${st.skin}-${st.size}.png`;
+async function download() {
+  const blob = await toBlob(st.size); const url = URL.createObjectURL(blob);
+  if (isIOS) { $('mimg').src = url; $('modal').classList.remove('hidden'); return; }
+  const a = document.createElement('a'); a.href = url; a.download = filename(); document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000); toast(`Saved ${st.size}×${st.size} PNG`);
+}
+function closeModal() { $('modal').classList.add('hidden'); }
+$('mclose').onclick = closeModal; $('modal').onclick = e => { if (e.target.id === 'modal') closeModal(); };
+async function share() {
+  const blob = await toBlob(st.size), file = new File([blob], filename(), { type: 'image/png' });
+  const data = { files: [file], title: 'My Gato PFP', text: 'Made my cat pfp on Gato PFP!', url: location.href.split('#')[0] };
+  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share(data); } catch (e) { if (e.name !== 'AbortError') toast('Share failed'); } return; }
+  const link = location.href.split('#')[0];
+  try { await navigator.clipboard.writeText(link); } catch (e) { const t = document.createElement('textarea'); t.value = link; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch (e2) { } t.remove(); }
+  toast('Link copied – paste it anywhere to share');
+}
+$('dl').onclick = download; $('share').onclick = share;
+let tt; function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 2400); }
+
+// test hooks
+window.__gato = { st, randomize, undo, redo, snap, apply: o => { apply(JSON.stringify(o)); commit(); draw(); }, addAcc, draw, render, skinCanvas, SKINS, ACCS, BGS, CATEGORIES, toBlob, bbox, sortItems };
+
+// ---------- boot
+setup(); const had = load(); hist = []; hi = -1; commit(); refresh(); draw(); loadScenes();

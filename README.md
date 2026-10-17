@@ -1,13 +1,12 @@
 # Gato PFP
 
-A tiny static profile-picture generator built around one very serious kitten.
+Dress up the cat and download your pfp. Static site, no build step (open `index.html` or host on GitHub Pages).
 
-- Pick a background (solid or gradient) and a pattern
-- Frame: circle, rounded, or square
-- Drag and scale drawn accessories: top hat, sunglasses, bow tie, crown (pinch or scroll to resize)
-- Upload your own photo as the cat's face or as the background
-- Randomize, then download a 1024x1024 PNG
+- 10 fur colors (recolored from the cutout, shading preserved)
+- 66 original hand-drawn accessories in 8 categories (Hats, Eyes, Face, Neck, Outfit, Props, Extras, Memes), one of each, drag / scale / rotate
+- 20 color/gradient backgrounds + painted Scenes (`assets/bg/scenes.json` lists `name` + `file`; missing files are skipped)
+- Patterns, frames, upload your own photo, transparent background
+- Real PNG download at 1024 or 2048, Web Share (with file) or copy-link fallback, iOS hold-to-save fallback
+- Undo/redo, keyboard shortcuts (Ctrl+Z, Ctrl+Shift+Z, Del, arrows, +/-, [ ], R, Ctrl+S), remembers your last settings
 
-No build step, no dependencies. Open `index.html` through any static server, e.g. `python3 -m http.server`.
-
-By kungFuDOOM. MIT licensed (code). The cat photo is the project owner's supplied image.
+Made by kungFuDOOM. MIT.

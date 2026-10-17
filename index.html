@@ -1,42 +1,65 @@
 <!doctype html>
 <html lang="en"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Gato PFP</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Gato PFP – dress up the cat</title>
+<meta name="description" content="Free cat profile picture generator: 10 fur colors, 60+ accessories, scenes, transparent PNG export up to 2048px.">
+<meta name="theme-color" content="#16141f">
 <link rel="stylesheet" href="css/style.css">
 </head><body>
-<header><h1>Gato PFP</h1><p>Dress up the cat. Download your pfp.</p></header>
+<header>
+  <div class="brand"><span class="logo" aria-hidden="true"></span><div><h1>Gato PFP</h1><p>Pick a fur, dress the cat, save your pfp.</p></div></div>
+  <span class="by">by kungFuDOOM</span>
+</header>
 <main>
 <section class="stage">
-  <canvas id="c" width="1024" height="1024" aria-label="PFP preview"></canvas>
+  <div class="cvwrap"><canvas id="c" width="1024" height="1024" aria-label="PFP preview"></canvas></div>
+  <div class="toolbar" role="toolbar" aria-label="Edit tools">
+    <button id="rand" title="Randomize (R)"><i>🎲</i><span>Randomize</span></button>
+    <button id="undo" title="Undo (Ctrl+Z)"><i>↶</i><span>Undo</span></button>
+    <button id="redo" title="Redo (Ctrl+Shift+Z)"><i>↷</i><span>Redo</span></button>
+    <button id="reset" title="Reset everything"><i>⟲</i><span>Reset</span></button>
+  </div>
   <div class="row">
-    <button id="rand" class="pri">🎲 Randomize</button>
-    <button id="dl" class="pri">⬇ Download PNG</button>
+    <button id="dl" class="pri" title="Download PNG (Ctrl+S)">⬇ Download PNG</button>
+    <button id="share" class="pri alt" title="Share">⤴ Share</button>
   </div>
   <div id="sel" class="sel hidden">
     <b id="selname">Selected</b>
-    <label>Size <input id="selsize" type="range" min="0.2" max="3" step="0.01"></label>
+    <label>Size <input id="selsize" type="range" min="0.2" max="3.5" step="0.01"></label>
     <label>Rotate <input id="selrot" type="range" min="-180" max="180" step="1"></label>
     <button id="seldel">Remove</button>
   </div>
 </section>
 <section class="panel">
-  <details open><summary>Accessories</summary><div class="body">
-    <p class="hint">Tap to add, drag on the preview to move</p>
-    <div id="acctabs" class="chips tabs"></div>
+  <details open><summary>Fur color</summary><div class="body"><div id="skins" class="tiles"></div></div></details>
+  <details open><summary>Accessories <small id="acccount"></small></summary><div class="body">
+    <p class="hint">Tap to add · drag on the preview to move · one of each</p>
+    <div id="acctabs" class="tabs" role="tablist"></div>
     <div id="acc" class="accgrid"></div>
   </div></details>
-  <details open><summary>Background</summary><div class="body"><div id="bgs" class="swatches"></div></div></details>
+  <details open><summary>Background</summary><div class="body">
+    <div class="grp" id="scenegrp" hidden><h3>Scenes</h3><div id="scenes" class="tiles bgtiles"></div></div>
+    <div class="grp"><h3>Colors</h3><div id="bgs" class="tiles bgtiles"></div></div>
+    <label class="check"><input type="checkbox" id="transp"> Transparent background (PNG)</label>
+  </div></details>
   <details><summary>Pattern</summary><div class="body"><div id="pats" class="chips"></div></div></details>
   <details><summary>Frame</summary><div class="body"><div id="frames" class="chips"></div></div></details>
-  <details><summary>Cat zoom</summary><div class="body"><input id="zoom" type="range" min="0.8" max="2.4" step="0.01" value="1.25"></div></details>
+  <details><summary>Cat zoom</summary><div class="body"><input id="zoom" type="range" min="0.8" max="2.4" step="0.01" value="1.1"></div></details>
   <details><summary>Your photo</summary><div class="body"><div class="chips">
     <label class="btn">Upload<input id="file" type="file" accept="image/*" hidden></label>
-    <button id="pface">As face</button>
-    <button id="pbg">As background</button>
-    <button id="pclear">Clear</button>
+    <button id="pface">As face</button><button id="pbg">As background</button><button id="pclear">Clear</button>
   </div></div></details>
+  <details open><summary>Export</summary><div class="body">
+    <div class="chips" id="sizes"></div>
+    <p class="hint">Real PNG file. Keys: Ctrl+Z undo · Ctrl+Shift+Z redo · Del remove · arrows nudge · +/- size · [ ] rotate · R random · Ctrl+S save</p>
+  </div></details>
   <p class="foot">Made by kungFuDOOM · MIT</p>
 </section>
 </main>
+<div id="modal" class="modal hidden" role="dialog" aria-modal="true"><div class="mbox"><img id="mimg" alt="Your pfp"><p><b>Press and hold the image</b>, then choose “Add to Photos” or “Save Image”.</p><button id="mclose" class="pri">Done</button></div></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="js/acc-base.js"></script>
+<script src="js/acc-new.js"></script>
+<script src="js/acc-meta.js"></script>
 <script src="js/app.js"></script>
 </body></html>
